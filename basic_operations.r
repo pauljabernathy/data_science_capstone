@@ -1,3 +1,5 @@
+source('util.r')
+
 PUNCTUATION_REGEX = '[.?!]' # '[\\.?!]'
 
 
@@ -55,11 +57,6 @@ tokenize_string = function(sentence) {
   return(strsplit(sentence, ' ')[[1]])
 }
 
-find_word_stats = function(text) {
-  tokens = tokenize_string(text)
-  
-}
-
 
 split_to_sentences = function(text) {
   sentences = strsplit(text, PUNCTUATION_REGEX)[[1]]
@@ -67,5 +64,36 @@ split_to_sentences = function(text) {
     sentences[i] = strip(sentences[i])
   }
   return(sentences)
+}
+
+tokenize_by_sentence = function(text) {
+  sentences = split_to_sentences(text)
+  result = list()
+  #for(sentence in sentences) {
+  for(i in 1:length(sentences)) {
+    sentence = sentences[i]
+    current_result = tokenize_string(sentence)
+    if(!is.null(current_result) && current_result != '') {
+      result[[i]] = current_result
+    }
+  }
+  return(result)
+}
+
+find_sentence_length_hist = function(list_ofsentences) {
+  lengths = c()
+  for(i in 1:length(list_of_sentences)) {
+    lengths = c(lengths, length(list_of_sentences[[i]]))
+  }
+  h = data.frame(lengths)
+  # or maybe factorHist
+  fh = factorHist(lengths)
+  return(fh)
+}
+
+find_word_stats = function(text) {
+  tokens = tokenize_string(text)
+  fh = factorHist(tokens)
+  return(fh)
 }
 
