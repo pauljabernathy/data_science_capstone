@@ -1,6 +1,7 @@
 source('util.r')
+library(readr)
 
-PUNCTUATION_REGEX = '[.?!]' # '[\\.?!]'
+SENTENCE_END_REGEX = '[.?!]' # '[\\.?!]'
 
 
 read_file_as_string = function(file_name, num_lines=1000000000) {
@@ -8,13 +9,22 @@ read_file_as_string = function(file_name, num_lines=1000000000) {
   # readLines().  Designed to simulate the following in Python:
   # with open(file_name, 'r', encoding='UTF-8') as f:
   #     test = f.read()
-  con = file(file_name)
-  text_lines = readLines(con, num_lines)
-  close(con)
-  text = text_lines[1]
-  for(i in 2:length(text_lines)) {
-    text = paste(text, text_lines[i])
+
+  if(FALSE) {
+    # This method works for small files but for larger files is untractably slow.
+    con = file(file_name)
+    text_lines = readLines(con, num_lines)
+    close(con)
+    text = text_lines[1]
+    for(i in 2:length(text_lines)) {
+      text = paste(text, text_lines[i])
+    }
+    return(text)
   }
+  # I found a library called "readr" that has a function called read_file, which is what I was looking for.
+  # I might be able to remove this function entirely.
+  text = read_file(file_name)
+  text = gsub('\r\n', ' ', text)
   return(text)
 }
 
@@ -46,6 +56,7 @@ cleanse = function(text) {
 }
 
 tokenize_string = function(sentence) {
+  #print(sentence)
   if(sentence == '') {
     return(c(''))
   }
@@ -59,7 +70,7 @@ tokenize_string = function(sentence) {
 
 
 split_to_sentences = function(text) {
-  sentences = strsplit(text, PUNCTUATION_REGEX)[[1]]
+  sentences = strsplit(text, SENTENCE_END_REGEX)[[1]]
   for(i in 1:length(sentences)) {
     sentences[i] = strip(sentences[i])
   }
@@ -80,7 +91,7 @@ tokenize_by_sentence = function(text) {
   return(result)
 }
 
-find_sentence_length_hist = function(list_ofsentences) {
+find_sentence_length_hist = function(list_of_sentences) {
   lengths = c()
   for(i in 1:length(list_of_sentences)) {
     lengths = c(lengths, length(list_of_sentences[[i]]))
@@ -94,6 +105,64 @@ find_sentence_length_hist = function(list_ofsentences) {
 find_word_stats = function(text) {
   tokens = tokenize_string(text)
   fh = factorHist(tokens)
+  #fh = counts_table(tokens)
   return(fh)
 }
 
+
+# ngrams
+
+find_n_grams_1_d_list = function (input, n) {
+  ngrams = list()
+  if(n <= 0 || n > length(input)) {
+    return(ngrams)
+  }
+  for(i in 1:(length(input) - n + 1)) {
+    end = i + n - 1
+    ngrams[[i]] = input[i:end]
+  }
+  return(ngrams)
+}
+
+find_n_grams_list_of_lists = function(list_of_sentences, n) {
+  ngrams = c()
+  if(is.null(list_of_sentences)) {
+    return(ngrams)
+  }
+  #for(item in list_of_sentences) {
+  for(i in 1:length(list_of_sentences)) {
+    item = list_of_sentences[[i]]
+    current_ngrams = find_n_grams_1_d_list(item, n)
+    ngrams = c(ngrams, current_ngrams)
+  }
+  return(ngrams)
+}
+
+find_n_grams_from_text = function(text, n) {
+  lists_of_words = tokenize_by_sentence(text)
+  if(FALSE) {
+  text = "One sentence.  Two sentences.  To be or not to be.  Whatever.  The problem is that I don't even know what a sentence is."
+  tokens = tokenize_by_sentence(text)
+  for(i in 1:length(tokens)) {
+  }
+  result2 = find_n_grams_list_of_lists(tokens, 2)
+  return(result2)
+  }
+  ngrams = find_n_grams_list_of_lists(lists_of_words, n)
+  return(ngrams)
+}
+
+should_run_analysis = FALSE
+if(should_run_analysis) {
+  start = Sys.time()
+  file_name = 'en_US/twitter_train.txt'
+  file_name = 'en_US/moby_dick_no_header.txt'
+  file_text = read_file_as_string(file_name)
+  word_stats = find_word_stats(file_text)
+  sentences = tokenize_by_sentence(file_text)
+  sentence_lengths = find_sentence_length_hist(sentences)
+  two_grams = find_n_grams_list_of_lists(sentences, 2)
+  three_grams = find_n_grams_list_of_lists(sentences, 3)
+  end = Sys.time()
+  print(paste("completed in", (end - start), "seconds"))
+}
